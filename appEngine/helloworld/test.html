@@ -1,0 +1,30 @@
+<form method="post">
+    <b>Sign Up!</b>
+    <br>
+    <label>  
+        Username
+        <input type="text" name="username" value="%(username)">
+        <div>%(usernameError)</div>
+    </label>
+    <br>
+    <label>
+        Password
+        <input type="password" name="password" value="%(password)">
+        <div>%(passwordError)</div>
+    </label>
+    <br>    
+    <label>
+        Verify Password
+        <input type="password" name="verify" value="%(verify)">
+        <div>%(verifyError)</div>
+    </label>
+    <br>    
+    <label>
+        Email (optional)
+        <input type="text" name="email" value="%(mail)">
+        <div>%(mailError)</div>
+    </label>
+    <br>
+    <br>        
+    <input type="submit">
+</form>
