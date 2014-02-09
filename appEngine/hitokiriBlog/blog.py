@@ -5,7 +5,10 @@ from string import letters
 import webapp2
 import jinja2
 
+from signup import *
+
 from google.appengine.ext import db
+from google.appengine.ext.db import GqlQuery
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
@@ -14,6 +17,22 @@ jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
 def render_str(template, **params):
     t = jinja_env.get_template(template)
     return t.render(params)
+
+def render_json_blog(post):
+    container = ""
+    json = '{"content":"%s", "created":"%s", "last_modified":"%s", "subject":"%s"}'
+    if post:
+        if isinstance(post, GqlQuery):
+            container = "["
+            coma = 1
+            for p in post:
+                container += json % (p.content, p.created.strftime("%a %b %d %H:%M:%S %Y"), p.last_modified.strftime("%a %b %d %H:%M:%S %Y"), p.subject)
+                container += ","
+            container = container[:-1]+"]"
+        else:
+            # %c in the format has the same representation as the one up
+            container = json % (post.content, post.created.strftime("%c"), post.last_modified.strftime("%c"), post.subject)
+    return container
 
 class BlogHandler(webapp2.RequestHandler):
     def write(self, *a, **kw):
@@ -30,8 +49,14 @@ def render_post(response, post):
     response.out.write(post.content)
 
 class MainPage(BlogHandler):
-  def get(self):
-      self.write('Hello, Udacity!')
+    def get(self):
+        name = self.request.cookies.get("name")
+        user = self.request.cookies.get("user")
+
+        if valid_pw(name, user):
+            self.response.write("Welcome, %s!" % name)    
+        else:
+            self.redirect("/blog/signup")
 
 ##### blog stuff
 
@@ -51,7 +76,14 @@ class Post(db.Model):
 class BlogFront(BlogHandler):
     def get(self):
         posts = db.GqlQuery("select * from Post order by created desc limit 10")
-        self.render('front.html', posts = posts)
+        if self.request.url.endswith('.json'):
+            self.response.headers['Content-Type'] = 'application/json'
+            if posts.count() > 0:
+                self.response.write(render_json_blog(posts))
+            else:
+                self.response.write(render_json_blog(None))
+        else:
+            self.render('front.html', posts = posts)
 
 class PostPage(BlogHandler):
     def get(self, post_id):
@@ -61,8 +93,11 @@ class PostPage(BlogHandler):
         if not post:
             self.error(404)
             return
-
-        self.render("permalink.html", post = post)
+        if self.request.url.endswith('.json'):
+            self.response.headers['Content-Type'] = 'application/json'
+            self.response.write(render_json_blog(post))
+        else:
+            self.render("permalink.html", post = post)
 
 class NewPost(BlogHandler):
     def get(self):
@@ -152,11 +187,19 @@ class Welcome(BlogHandler):
             self.redirect('/unit2/signup')
 
 app = webapp2.WSGIApplication([('/', MainPage),
+                               ('/blog/welcome', MainPage),
                                ('/unit2/rot13', Rot13),
                                ('/unit2/signup', Signup),
                                ('/unit2/welcome', Welcome),
-                               ('/blog/?', BlogFront),
-                               ('/blog/([0-9]+)', PostPage),
+                               ('/blog/?(?:.json)?', BlogFront),
+                               #('/blog/?', BlogFront),
+                               #('/blog/.json', BlogFront),
+                               ('/blog/([0-9]+)(?:.json)?', PostPage),
+                               #('/blog/([0-9]+)', PostPage),
+                               #('/blog/([0-9]+).json', PostPage),
                                ('/blog/newpost', NewPost),
+                               ('/blog/login',LoginHandler),
+                               ('/blog/signup', MainHandler),
+                               ('/blog/logout', LogoutHandler),
                                ],
                               debug=True)
