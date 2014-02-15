@@ -1,5 +1,7 @@
 import os
 import re
+import time
+
 from string import letters
 
 import webapp2
@@ -8,6 +10,7 @@ import jinja2
 from signup import *
 
 from google.appengine.ext import db
+from google.appengine.api import memcache
 from google.appengine.ext.db import GqlQuery
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
@@ -75,6 +78,14 @@ class Post(db.Model):
 
 class BlogFront(BlogHandler):
     def get(self):
+        time_cached = memcache.get("time")
+        if time_cached:
+            now = time.time()
+            calculated_time = now - time_cached
+        else:
+            calculated_time = 0.0
+            memcache.set("time", time.time())
+
         posts = db.GqlQuery("select * from Post order by created desc limit 10")
         if self.request.url.endswith('.json'):
             self.response.headers['Content-Type'] = 'application/json'
@@ -83,7 +94,7 @@ class BlogFront(BlogHandler):
             else:
                 self.response.write(render_json_blog(None))
         else:
-            self.render('front.html', posts = posts)
+            self.render('front.html', posts = posts, time=int(calculated_time))
 
 class PostPage(BlogHandler):
     def get(self, post_id):
