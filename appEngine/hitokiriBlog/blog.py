@@ -204,6 +204,12 @@ class Welcome(BlogHandler):
         else:
             self.redirect('/unit2/signup')
 
+class FlushHandler(BlogHandler):
+    def get(self):
+        memcache.flush_all()
+        self.redirect('/blog')
+
+
 app = webapp2.WSGIApplication([('/', MainPage),
                                ('/blog/welcome', MainPage),
                                ('/unit2/rot13', Rot13),
@@ -219,5 +225,6 @@ app = webapp2.WSGIApplication([('/', MainPage),
                                ('/blog/login',LoginHandler),
                                ('/blog/signup', MainHandler),
                                ('/blog/logout', LogoutHandler),
+                               ('/blog/flush', FlushHandler),
                                ],
                               debug=True)
