@@ -100,6 +100,13 @@ class PostPage(BlogHandler):
     def get(self, post_id):
         key = db.Key.from_path('Post', int(post_id), parent=blog_key())
         post = db.get(key)
+        time_cached = memcache.get(post_id)
+        if time_cached:
+            now = time.time()
+            calculated_time = now - time_cached
+        else:
+            calculated_time = 0.0
+            memcache.set(post_id, time.time())
 
         if not post:
             self.error(404)
@@ -108,7 +115,7 @@ class PostPage(BlogHandler):
             self.response.headers['Content-Type'] = 'application/json'
             self.response.write(render_json_blog(post))
         else:
-            self.render("permalink.html", post = post)
+            self.render("permalink.html", post = post, time=int(calculated_time))
 
 class NewPost(BlogHandler):
     def get(self):
